@@ -177,20 +177,14 @@
         };
 
         const app = document.getElementById('app');
-        const API_KEY = '27b3933da47145b9a3f9360231b78858';
 
-        // --- Fetch standings and compute scores ---
+        // --- Fetch standings from static JSON ---
         function loadData() {
             app.innerHTML = '<div class="loading">Loading standings...</div>';
 
-            fetch('https://api.football-data.org/v4/competitions/PL/standings', {
-                headers: { 'X-Auth-Token': API_KEY }
-            })
+            fetch('standings.json')
             .then(r => {
-                if (r.status === 403 || r.status === 401) {
-                    throw new Error('Invalid API key. Please check your key and try again.');
-                }
-                if (!r.ok) throw new Error(`API error (${r.status})`);
+                if (!r.ok) throw new Error(`Failed to load standings.json (${r.status})`);
                 return r.json();
             })
             .then(data => {
@@ -213,11 +207,7 @@
                 render({ standings, scores, leaderboard });
             })
             .catch(err => {
-                const isLocal = location.protocol === 'file:';
-                const hint = isLocal
-                    ? '<br><br><span style="font-size:0.85rem">You\'re opening this as a local file. Browsers block API requests from file:// URLs.<br>Serve it over HTTP instead: <code>python -m http.server 8000</code> then visit <code>localhost:8000</code></span>'
-                    : '';
-                app.innerHTML = `<div class="error">Failed to load standings: ${err.message}${hint}</div>`;
+                app.innerHTML = `<div class="error">Failed to load standings: ${err.message}</div>`;
             });
         }
 
