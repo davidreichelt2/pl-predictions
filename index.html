@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PL Predictions 2025/26</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            padding: 20px;
+            min-width: 900px;
+        }
+        h1 {
+            text-align: center;
+            color: #fff;
+            margin-bottom: 6px;
+            font-size: 1.6rem;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+        }
+        .error {
+            background: #5c1a1a;
+            color: #ff9a9a;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 40px auto;
+            max-width: 600px;
+        }
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #888;
+            font-size: 1.1rem;
+        }
+
+        /* Leaderboard */
+        .leaderboard {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+        }
+        .lb-card {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 16px 24px;
+            text-align: center;
+            min-width: 120px;
+            border: 2px solid transparent;
+        }
+        .lb-card.rank-1 { border-color: #ffd700; }
+        .lb-card.rank-2 { border-color: #c0c0c0; }
+        .lb-card.rank-3 { border-color: #cd7f32; }
+        .lb-rank {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        .lb-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        .lb-score {
+            font-size: 0.95rem;
+            color: #aaa;
+            margin-top: 4px;
+        }
+
+        /* Table */
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 10px;
+            background: #16213e;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+        }
+        th, td {
+            padding: 8px 12px;
+            text-align: center;
+            white-space: nowrap;
+        }
+        th {
+            background: #0f3460;
+            color: #fff;
+            position: sticky;
+            top: 0;
+            font-weight: 600;
+        }
+        th:first-child, td:first-child { text-align: left; }
+        th:nth-child(2), td:nth-child(2) { text-align: center; }
+        tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+        tr:hover td { background: rgba(255,255,255,0.06); }
+        td.team-name { font-weight: 600; color: #fff; }
+        td.actual-pos { color: #ccc; font-weight: 600; }
+
+        /* Color coding for diffs */
+        .diff-0  { background: #1b5e20 !important; color: #fff; font-weight: 700; }
+        .diff-1  { background: #2e7d32 !important; color: #fff; }
+        .diff-2  { background: #388e3c !important; color: #fff; }
+        .diff-3  { background: #7f6b00 !important; color: #fff; }
+        .diff-4  { background: #8d6e00 !important; color: #fff; }
+        .diff-5  { background: #9e7700 !important; color: #fff; }
+        .diff-high { background: #8b1a1a !important; color: #fff; }
+        .diff-na { color: #666; }
+
+        .pred-cell { position: relative; }
+        .pred-diff {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.6);
+            margin-left: 4px;
+        }
+
+        /* Standings detail columns */
+        .stats-col {
+            color: #888;
+            font-size: 0.82rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>Premier League Predictions 2025/26</h1>
+    <p class="subtitle">Live standings vs. predictions &mdash; lower score = more accurate</p>
+
+    <div id="app"></div>
+
+    <script>
+        // --- Embedded predictions (from CSV) ---
+        const PREDICTIONS = {
+            "Tom":    {"Arsenal":1,"Manchester City":2,"Liverpool":3,"Chelsea":4,"Spurs":5,"Aston Villa":6,"Newcastle United":7,"Brighton":8,"Everton":9,"Fulham":10,"Manchester United":11,"AFC Bournemouth":12,"Crystal Palace":13,"Nottingham Forest":14,"Wolves":15,"West Ham United":16,"Sunderland":17,"Brentford":18,"Leeds United":19,"Burnley":20},
+            "David":  {"Liverpool":1,"Manchester City":2,"Arsenal":3,"Leeds United":4,"Brighton":5,"Chelsea":6,"Spurs":7,"Manchester United":8,"Newcastle United":9,"Wolves":10,"Fulham":11,"Brentford":12,"Burnley":13,"Crystal Palace":14,"Everton":15,"AFC Bournemouth":16,"Nottingham Forest":17,"Aston Villa":18,"West Ham United":19,"Sunderland":20},
+            "James":  {"Liverpool":1,"Arsenal":2,"Manchester City":3,"Chelsea":4,"Newcastle United":5,"Spurs":6,"Brighton":7,"Aston Villa":8,"Manchester United":9,"Fulham":10,"West Ham United":11,"Crystal Palace":12,"Wolves":13,"Nottingham Forest":14,"Everton":15,"AFC Bournemouth":16,"Sunderland":17,"Brentford":18,"Leeds United":19,"Burnley":20},
+            "Martin": {"Liverpool":1,"Manchester City":2,"Chelsea":3,"Arsenal":4,"Aston Villa":5,"Newcastle United":6,"Manchester United":7,"Nottingham Forest":8,"Brighton":9,"Spurs":10,"Everton":11,"Crystal Palace":12,"West Ham United":13,"AFC Bournemouth":14,"Fulham":15,"Wolves":16,"Sunderland":17,"Burnley":18,"Brentford":19,"Leeds United":20},
+            "Ben":    {"Liverpool":1,"Manchester City":2,"Aston Villa":3,"Arsenal":4,"Nottingham Forest":5,"Chelsea":6,"Brentford":7,"Newcastle United":8,"Crystal Palace":9,"Brighton":10,"Fulham":11,"Everton":12,"AFC Bournemouth":13,"West Ham United":14,"Manchester United":15,"Wolves":16,"Spurs":17,"Leeds United":18,"Burnley":19,"Sunderland":20}
+        };
+        const PEOPLE = ["Tom", "David", "James", "Martin", "Ben"];
+
+        // --- API team name -> prediction name mapping ---
+        const API_NAME_MAP = {
+            "Arsenal FC": "Arsenal",
+            "Manchester City FC": "Manchester City",
+            "Liverpool FC": "Liverpool",
+            "Chelsea FC": "Chelsea",
+            "Tottenham Hotspur FC": "Spurs",
+            "Aston Villa FC": "Aston Villa",
+            "Newcastle United FC": "Newcastle United",
+            "Brighton & Hove Albion FC": "Brighton",
+            "Everton FC": "Everton",
+            "Fulham FC": "Fulham",
+            "Manchester United FC": "Manchester United",
+            "AFC Bournemouth": "AFC Bournemouth",
+            "Crystal Palace FC": "Crystal Palace",
+            "Nottingham Forest FC": "Nottingham Forest",
+            "Wolverhampton Wanderers FC": "Wolves",
+            "West Ham United FC": "West Ham United",
+            "Sunderland AFC": "Sunderland",
+            "Brentford FC": "Brentford",
+            "Leeds United FC": "Leeds United",
+            "Burnley FC": "Burnley",
+            "Leicester City FC": "Leicester City",
+            "Ipswich Town FC": "Ipswich Town",
+            "Southampton FC": "Southampton",
+            "Luton Town FC": "Luton Town",
+            "Sheffield United FC": "Sheffield United",
+        };
+
+        const app = document.getElementById('app');
+        const API_KEY = '27b3933da47145b9a3f9360231b78858';
+
+        // --- Fetch standings and compute scores ---
+        function loadData() {
+            app.innerHTML = '<div class="loading">Loading standings...</div>';
+
+            fetch('https://api.football-data.org/v4/competitions/PL/standings', {
+                headers: { 'X-Auth-Token': API_KEY }
+            })
+            .then(r => {
+                if (r.status === 403 || r.status === 401) {
+                    throw new Error('Invalid API key. Please check your key and try again.');
+                }
+                if (!r.ok) throw new Error(`API error (${r.status})`);
+                return r.json();
+            })
+            .then(data => {
+                const standings = data.standings[0].table.map(entry => ({
+                    position: entry.position,
+                    team: API_NAME_MAP[entry.team.name] || entry.team.name,
+                    played: entry.playedGames,
+                    won: entry.won,
+                    drawn: entry.draw,
+                    lost: entry.lost,
+                    gd: entry.goalDifference,
+                    points: entry.points,
+                }));
+
+                const scores = computeScores(standings);
+                const leaderboard = PEOPLE
+                    .map(p => ({ name: p, total: scores[p].total }))
+                    .sort((a, b) => a.total - b.total);
+
+                render({ standings, scores, leaderboard });
+            })
+            .catch(err => {
+                const isLocal = location.protocol === 'file:';
+                const hint = isLocal
+                    ? '<br><br><span style="font-size:0.85rem">You\'re opening this as a local file. Browsers block API requests from file:// URLs.<br>Serve it over HTTP instead: <code>python -m http.server 8000</code> then visit <code>localhost:8000</code></span>'
+                    : '';
+                app.innerHTML = `<div class="error">Failed to load standings: ${err.message}${hint}</div>`;
+            });
+        }
+
+        function computeScores(standings) {
+            const actual = {};
+            standings.forEach(s => { actual[s.team] = s.position; });
+
+            const scores = {};
+            PEOPLE.forEach(person => {
+                const preds = PREDICTIONS[person];
+                const teams = {};
+                let total = 0;
+                for (const [team, actualPos] of Object.entries(actual)) {
+                    const predicted = preds[team];
+                    if (predicted != null) {
+                        const diff = Math.abs(actualPos - predicted);
+                        teams[team] = { predicted, actual: actualPos, diff };
+                        total += diff;
+                    } else {
+                        teams[team] = { predicted: null, actual: actualPos, diff: null };
+                    }
+                }
+                scores[person] = { total, teams };
+            });
+            return scores;
+        }
+
+        // --- Render UI ---
+        function render(data) {
+            const { standings, scores, leaderboard } = data;
+            let html = '';
+
+            // Leaderboard
+            html += '<div class="leaderboard">';
+            leaderboard.forEach((entry, i) => {
+                const rankClass = i < 3 ? ` rank-${i + 1}` : '';
+                html += `
+                    <div class="lb-card${rankClass}">
+                        <div class="lb-rank">#${i + 1}</div>
+                        <div class="lb-name">${entry.name}</div>
+                        <div class="lb-score">${entry.total} pts off</div>
+                    </div>`;
+            });
+            html += '</div>';
+
+            // Table
+            html += '<div class="table-wrap"><table>';
+            html += '<thead><tr>';
+            html += '<th>Pos</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th>';
+            PEOPLE.forEach(p => {
+                const total = scores[p].total;
+                html += `<th>${p}<br><span style="font-weight:400;font-size:0.75rem;color:#aaa">(${total})</span></th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            standings.forEach(row => {
+                html += '<tr>';
+                html += `<td class="actual-pos">${row.position}</td>`;
+                html += `<td class="team-name">${row.team}</td>`;
+                html += `<td class="stats-col">${row.played}</td>`;
+                html += `<td class="stats-col">${row.won}</td>`;
+                html += `<td class="stats-col">${row.drawn}</td>`;
+                html += `<td class="stats-col">${row.lost}</td>`;
+                html += `<td class="stats-col">${row.gd > 0 ? '+' : ''}${row.gd}</td>`;
+                html += `<td class="stats-col" style="font-weight:600;color:#ccc">${row.points}</td>`;
+
+                PEOPLE.forEach(person => {
+                    const info = scores[person].teams[row.team];
+                    if (!info || info.predicted === null) {
+                        html += '<td class="pred-cell diff-na">-</td>';
+                        return;
+                    }
+                    const diff = info.diff;
+                    let cls = 'diff-high';
+                    if (diff === 0) cls = 'diff-0';
+                    else if (diff <= 2) cls = 'diff-' + diff;
+                    else if (diff <= 5) cls = 'diff-' + diff;
+
+                    const arrow = diff === 0 ? '' :
+                        `<span class="pred-diff">${diff > 0 ? '(' + diff + ')' : ''}</span>`;
+                    html += `<td class="pred-cell ${cls}">${info.predicted}${arrow}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            html += '</tbody></table></div>';
+            app.innerHTML = html;
+        }
+
+        // --- Start ---
+        loadData();
+    </script>
+</body>
+</html>
